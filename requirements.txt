@@ -5,3 +5,4 @@ openpyxl
 jinja2
 streamlit
 plotly
+streamlit-echarts
