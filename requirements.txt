@@ -1,8 +1,4 @@
-fastapi
-uvicorn
+streamlit
 pandas
 openpyxl
-jinja2
-streamlit
 plotly
-streamlit-echarts
