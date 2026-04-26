@@ -1,3 +1,6 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 1 — ACCUEIL
+# ══════════════════════════════════════════════════════════════════════════════
 with tabs[0]:
     st.markdown("""
     <div style="
@@ -64,30 +67,15 @@ with tabs[0]:
             </p>
 
             <div style="display:flex; gap:1.5rem; justify-content:center; flex-wrap:wrap; margin-top:2rem;">
-                <div style="
-                    background: linear-gradient(135deg, #0d1f3c, #0a1628);
-                    border: 1px solid #1e6bb8;
-                    border-radius: 14px; padding: 1.5rem 2rem;
-                    min-width: 160px;
-                ">
+                <div style="background: linear-gradient(135deg, #0d1f3c, #0a1628); border: 1px solid #1e6bb8; border-radius: 14px; padding: 1.5rem 2rem; min-width: 160px;">
                     <div style="font-size:2.2rem; font-weight:900; color:#f0c040;">-25%</div>
                     <div style="font-size:0.85rem; color:#7fa8d4; margin-top:4px;">Réduction des coûts<br>de maintenance</div>
                 </div>
-                <div style="
-                    background: linear-gradient(135deg, #0d1f3c, #0a1628);
-                    border: 1px solid #1e6bb8;
-                    border-radius: 14px; padding: 1.5rem 2rem;
-                    min-width: 160px;
-                ">
+                <div style="background: linear-gradient(135deg, #0d1f3c, #0a1628); border: 1px solid #1e6bb8; border-radius: 14px; padding: 1.5rem 2rem; min-width: 160px;">
                     <div style="font-size:2.2rem; font-weight:900; color:#22c55e;">+40%</div>
                     <div style="font-size:0.85rem; color:#7fa8d4; margin-top:4px;">Amélioration<br>de la disponibilité</div>
                 </div>
-                <div style="
-                    background: linear-gradient(135deg, #0d1f3c, #0a1628);
-                    border: 1px solid #1e6bb8;
-                    border-radius: 14px; padding: 1.5rem 2rem;
-                    min-width: 160px;
-                ">
+                <div style="background: linear-gradient(135deg, #0d1f3c, #0a1628); border: 1px solid #1e6bb8; border-radius: 14px; padding: 1.5rem 2rem; min-width: 160px;">
                     <div style="font-size:2.2rem; font-weight:900; color:#1e6bb8;">24/7</div>
                     <div style="font-size:0.85rem; color:#7fa8d4; margin-top:4px;">Surveillance<br>en temps réel</div>
                 </div>
