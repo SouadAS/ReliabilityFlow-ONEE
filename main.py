@@ -89,9 +89,6 @@ def charger_donnees():
 
     # --- CALCULS KPI RÉALISTES ---
 
-   import pandas as pd
-import numpy as np
-
 def calculer_kpi_frequence(df_assets, df_events):
     # 1. Calcul du nombre de jours exacts de la période (DAX: NbJours)
     date_debut = df_events['EventDate'].min()
