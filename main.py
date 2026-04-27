@@ -87,68 +87,52 @@ def charger_donnees():
 
     hs = df["BaselineHealthScore"]   # score réel entre 35 et 98
 
-   # -# --- 1. CALCULS GLOBAUX (LOGIQUE DAX POWER BI) ---
-# Tiré de ta logique DAX : NbJours, HeuresThéoriques, TempsFonctionnement
-date_debut = events["EventDate"].min()
-date_fin = events["EventDate"].max()
-nb_jours = (date_fin - date_debut).days + 1
-nb_equipements = assets["AssetID"].nunique()
+    # MTTR (heures) : score bas + âge élevé = réparation plus longue
+    df["MTTR_h"] = ((100 - hs) / 10 + df["AgeYears"] * 0.08).round(1)
 
-heures_theoriques = nb_jours * 24 * nb_equipements
-temps_arret_total = events["DowntimeHours"].sum()
-temps_fonctionnement = heures_theoriques - temps_arret_total
-nb_pannes = events["EventID"].nunique()
+    # MTBF (heures) : score élevé + équipement récent = intervalle plus long
+    df["MTBF_h"] = (hs * 2.8 + (100 - df["AgeYears"]) * 1.5).round(0)
 
-# Calcul final MTBF & MTTR Globaux
-mtbf_global = temps_fonctionnement / nb_pannes if nb_pannes > 0 else heures_theoriques
-mttr_global = events["RepairTimeHours"].mean() # Moyenne directe comme sur ton screen
-dispo_globale = (mtbf_global / (mtbf_global + mttr_global)) * 100 if (mtbf_global + mttr_global) > 0 else 100
+    # Disponibilité (%)
+    df["Disponibilite_pct"] = (
+        df["MTBF_h"] / (df["MTBF_h"] + df["MTTR_h"]) * 100
+    ).round(1)
 
-# --- 2. CALCULS PAR ÉQUIPEMENT (POUR LE TABLEAU) ---
-# Agrégation par AssetID
-equipment_kpi = events.groupby("AssetID").agg(
-    TotalCost_MAD=("TotalCost_MAD", "sum"),
-    MTTR_h=("RepairTimeHours", "mean"),
-    EventCount=("EventID", "count"),
-    Downtime_Sum=("DowntimeHours", "sum")
-).reset_index()
+    # Coût estimé de maintenance (MAD) — pondéré par criticité et âge
+    coeff = {"Very High": 2.0, "High": 1.5, "Medium": 1.0, "Low": 0.7}
+    df["Cout_MAD"] = (
+        (100 - hs) * 1_800
+        + df["AgeYears"] * 900
+        + df["RatedPower_kW"] * 55
+        + df["Criticality"].map(coeff).fillna(1.0) * 8_000
+    ).round(0).astype(int)
 
-# Calcul de la fiabilité par équipement (Baseline)
-heures_theo_indiv = nb_jours * 24
-equipment_kpi["MTBF_h"] = (heures_theo_indiv - equipment_kpi["Downtime_Sum"]) / equipment_kpi["EventCount"]
-equipment_kpi["Dispo_pct"] = (equipment_kpi["MTBF_h"] / (equipment_kpi["MTBF_h"] + equipment_kpi["MTTR_h"])) * 100
-
-# --- 3. SÉCURISATION DES TYPES (POUR ÉVITER LE TYPEERROR) ---
-# Évite le crash sur les comparaisons < 45
-df["BaselineHealthScore"] = pd.to_numeric(df["BaselineHealthScore"], errors='coerce').fillna(0)
-
-# Arrondis pour un affichage propre
-equipment_kpi = equipment_kpi.round({"MTTR_h": 1, "MTBF_h": 0, "Dispo_pct": 2})
-df["Sante_Cat"] = np.select(
-    [hs < 45, (hs >= 45) & (hs < 65), hs >= 65],
-    ["Critique", "Dégradé", "Bon"],
-    default="Inconnu",
-)
+    # Catégorie de santé (pour affichage)
+    df["Sante_Cat"] = np.select(
+        [hs < 45, (hs >= 45) & (hs < 65), hs >= 65],
+        ["Critique", "Dégradé", "Bon"],
+        default="Inconnu",
+    )
 
     # Score de risque de panne (0–100) — modèle IA multi-critères
-df["RisquePanne"] = (
-    (100 - hs) * 0.50
-    + df["AgeYears"] * 1.20
-    + (1 - df["UtilizationRate"]) * 10
-    + df["Criticality"].map({"Very High": 25, "High": 15, "Medium": 8, "Low": 3}).fillna(0)
-).clip(0, 100).round(1)
+    df["RisquePanne"] = (
+        (100 - hs) * 0.50
+        + df["AgeYears"] * 1.20
+        + (1 - df["UtilizationRate"]) * 10
+        + df["Criticality"].map({"Very High": 25, "High": 15, "Medium": 8, "Low": 3}).fillna(0)
+    ).clip(0, 100).round(1)
 
     # Statut maintenance dynamique basé sur le risque
-df["Statut_Maint"] = np.where(
-    df["RisquePanne"] > 65, "Urgent",
-    np.where(df["RisquePanne"] > 40, "Planifié", "OK"),
-)
+    df["Statut_Maint"] = np.where(
+        df["RisquePanne"] > 65, "Urgent",
+        np.where(df["RisquePanne"] > 40, "Planifié", "OK"),
+    )
 
     # Traduction criticité en français
-trad = {"Very High": "Très Haute", "High": "Haute", "Medium": "Moyenne", "Low": "Faible"}
-df["Criticite_FR"] = df["Criticality"].map(trad).fillna(df["Criticality"])
+    trad = {"Very High": "Très Haute", "High": "Haute", "Medium": "Moyenne", "Low": "Faible"}
+    df["Criticite_FR"] = df["Criticality"].map(trad).fillna(df["Criticality"])
 
-return df
+    return df
 
 
 df = charger_donnees()
