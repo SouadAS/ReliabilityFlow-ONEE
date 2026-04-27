@@ -88,31 +88,36 @@ def charger_donnees():
     hs = df["BaselineHealthScore"]   # score réel entre 35 et 98
 
     # --- CALCULS KPI RÉALISTES ---
+# --- CALCULS DE FIABILITÉ CALIBRÉS (POWER BI) ---
+    # Lambda pour viser un MTBF moyen de 500h (1/500 = 0.002)
+    df["Lambda"] = 1 / (df["Score Santé"] * 4 + 100)
 
-   # --- CALCULS DE FIABILITÉ CALIBRÉS (POWER BI) ---
+    # MTBF (Mean Time Between Failures) -> Cible : ~500h
+    df["MTBF_h"] = (1 / df["Lambda"]).round(0)
 
-# Lambda calculé pour viser un MTBF moyen de 500h
-# Formule : 1 / (ScoreSanté * 4 + 100)
-df["Lambda"] = 1 / (df["Score Santé"] * 4 + 100)
+    # MTTR (Mean Time To Repair) -> Cible : ~9.35h
+    df["MTTR_h"] = (7.5 + (100 - df["Score Santé"]) * 0.05).round(2)
 
-# MTBF (Mean Time Between Failures) -> Résultat visé : ~500h
-df["MTBF_h"] = (1 / df["Lambda"]).round(0)
+    # Disponibilité (%) -> Formule : MTBF / (MTBF + MTTR)
+    df["Disponibilite_pct"] = (
+        df["MTBF_h"] / (df["MTBF_h"] + df["MTTR_h"]) * 100
+    ).round(2)
 
-# MTTR (Mean Time To Repair) -> Résultat visé : ~9.35h
-# Base fixe de 7.5h + part variable selon l'état de santé
-df["MTTR_h"] = (7.5 + (100 - df["Score Santé"]) * 0.05).round(2)
+    # --- CATÉGORISATION DE SANTÉ (np.select corrigé) ---
+    conditions = [
+        (df["Score Santé"] > 70),
+        (df["Score Santé"] >= 45) & (df["Score Santé"] <= 70),
+        (df["Score Santé"] < 45)
+    ]
+    choix = ["Bon", "Dégradé", "Critique"]
+    df["Sante_Cat"] = np.select(conditions, choix, default="Inconnu")
 
-# Disponibilité (%) -> Formule académique : MTBF / (MTBF + MTTR)
-df["Disponibilite_pct"] = (
-    df["MTBF_h"] / (df["MTBF_h"] + df["MTTR_h"]) * 100
-).round(2)
-
-# Coût de Maintenance (MAD) - Correction de la syntaxe ligne 121
-coeff_crit = {"Très Haute": 2.5, "Haute": 1.8, "Moyenne": 1.2, "Faible": 0.8}
-df["Cout_MAD"] = (
-    (df["MTTR_h"] * 1200) + 
-    (df["RatedPower_kW"] * 50) * df["Criticité"].map(coeff_crit).fillna(1.0)
-).round(-2).astype(int)
+    # --- CALCUL DES COÛTS ---
+    coeff_crit = {"Très Haute": 2.5, "Haute": 1.8, "Moyenne": 1.2, "Faible": 0.8}
+    df["Cout_MAD"] = (
+        (df["MTTR_h"] * 1200) + 
+        (df["RatedPower_kW"] * 50) * df["Criticité"].map(coeff_crit).fillna(1.0)
+    ).round(-2).astype(int)
 
     # Catégorie de santé (pour affichage)
     df["Sante_Cat"] = np.select(
