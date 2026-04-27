@@ -90,28 +90,13 @@ def charger_donnees():
     # --- CALCULS KPI RÉALISTES ---
 
 def calculer_kpi_frequence(df_assets, df_events):
-    # 1. Calcul du nombre de jours exacts de la période (DAX: NbJours)
-    date_debut = df_events['EventDate'].min()
-    date_fin = df_events['EventDate'].max()
-    nb_jours = (date_fin - date_debut).days + 1
-    
-    # 2. Temps de fonctionnement théorique (DAX: HeuresTheoriques)
-    nb_equipements = df_assets['AssetID'].nunique()
-    heures_theoriques = nb_jours * 24 * nb_equipements
-    
-    # 3. Déduction des arrêts pour le temps réel (DAX: TempsFonctionnement)
-    temps_arret_total = df_events['DowntimeHours'].sum()
-    temps_fonctionnement = heures_theoriques - temps_arret_total
-    
-    # 4. Nombre de pannes (DAX: NbPannes)
-    nb_pannes = df_events['EventID'].nunique()
-    
-    # 5. Calcul final du MTBF (DAX: DIVIDE)
-    mtbf = temps_fonctionnement / nb_pannes if nb_pannes > 0 else heures_theoriques
-    
-    # --- Pour le MTTR (Mean Time To Repair) ---
-    mttr = temps_arret_total / nb_pannes if nb_pannes > 0 else 0
-    
+    # Conversion forcée en numérique pour éviter le TypeError
+df["BaselineHealthScore"] = pd.to_numeric(df["BaselineHealthScore"], errors='coerce').fillna(0)
+
+# Calcul sécurisé des compteurs
+nb_crit = int((df["BaselineHealthScore"] < 45).sum())
+nb_deg  = int(((df["BaselineHealthScore"] >= 45) & (df["BaselineHealthScore"] <= 70)).sum())
+nb_bon  = int((df["BaselineHealthScore"] > 70).sum())
     return round(mtbf, 1), round(mttr, 1)
     # 2. MTTR (Heures) : Temps de réparation moyen (Diagnostic + Intervention).
     # Basé sur la complexité (RatedPower) et le score de santé actuel.
