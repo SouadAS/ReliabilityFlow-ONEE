@@ -131,12 +131,12 @@ df["Sante_Cat"] = np.select(
 )
 
     # Score de risque de panne (0–100) — modèle IA multi-critères
-    df["RisquePanne"] = (
-        (100 - hs) * 0.50
-        + df["AgeYears"] * 1.20
-        + (1 - df["UtilizationRate"]) * 10
-        + df["Criticality"].map({"Very High": 25, "High": 15, "Medium": 8, "Low": 3}).fillna(0)
-    ).clip(0, 100).round(1)
+df["RisquePanne"] = (
+    (100 - hs) * 0.50
+    + df["AgeYears"] * 1.20
+    + (1 - df["UtilizationRate"]) * 10
+    + df["Criticality"].map({"Very High": 25, "High": 15, "Medium": 8, "Low": 3}).fillna(0)
+).clip(0, 100).round(1)
 
     # Statut maintenance dynamique basé sur le risque
     df["Statut_Maint"] = np.where(
