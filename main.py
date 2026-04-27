@@ -89,43 +89,36 @@ def charger_donnees():
 
     # --- CALCULS KPI RÉALISTES ---
 
-    # --- LOGIQUE DE FIABILITÉ (COURS ACADÉMIQUE) ---
+    # --- LOGIQUE DE FIABILITÉ CALIBRÉE SUR POWER BI ---
 
     # 1. Calcul du Taux de Défaillance (Lambda)
-    # Plus le Health Score (hs) est bas, plus Lambda est élevé.
-    # Un Lambda typique pour une pompe est entre 0.0001 et 0.002 défaillances/heure.
-    # On utilise une échelle inversée : hs=100 -> lambda faible / hs=0 -> lambda fort
-    df["Lambda"] = (1 / (hs * 50 + 500)) + (df["AgeYears"] * 0.00005)
+    # Pour obtenir un MTBF moyen de ~500h, il faut un Lambda moyen de 1/500 = 0.002
+    # On ajuste la formule pour que Lambda varie autour de cette valeur selon le Health Score (hs)
+    df["Lambda"] = (1 / (hs * 4 + 100)) + (df["AgeYears"] * 0.00002)
 
     # 2. MTBF (Mean Time Between Failures)
-    # Formule du cours : MTBF = 1 / Lambda
+    # Résultat attendu : ~500h (Inverse de Lambda)
     df["MTBF_h"] = (1 / df["Lambda"]).round(0)
 
     # 3. MTTR (Mean Time To Repair)
-    # Dans le cours, le MTTR est souvent noté 1/mu (taux de réparation).
-    # On le pondère ici par la complexité (Puissance) et l'âge.
-    df["MTTR_h"] = (4 + (df["RatedPower_kW"] * 0.02) + (df["AgeYears"] * 0.1)).round(1)
+    # Résultat attendu : ~9.35h
+    # On définit une base de 6h (logistique) + une part variable selon la puissance et l'état
+    df["MTTR_h"] = (6.0 + (df["RatedPower_kW"] * 0.015) + (100 - hs) * 0.04).round(2)
 
-    # 4. Disponibilité (A)
-    # Formule du cours : A = MTBF / (MTBF + MTTR)
+    # 4. Disponibilité (%)
+    # A = MTBF / (MTBF + MTTR) -> (500 / 509.35) ≈ 98.1%
     df["Disponibilite_pct"] = (
         df["MTBF_h"] / (df["MTBF_h"] + df["MTTR_h"]) * 100
     ).round(2)
 
-    # 5. Fiabilité R(t) à t = 720h (1 mois de fonctionnement continu)
-    # Formule du cours : R(t) = exp(-lambda * t)
-    t = 720 
-    df["Fiabilite_R_t"] = (np.exp(-df["Lambda"] * t) * 100).round(1)
-
-    # --- COÛTS DE MAINTENANCE ---
-    # Basé sur le coût de défaillance (LCC - Life Cycle Costing)
+    # 5. Coût de Maintenance (MAD)
+    # Calibré sur les interventions pour un MTTR de 9h
     coeff_crit = {"Very High": 2.5, "High": 1.8, "Medium": 1.2, "Low": 0.8}
     impact_crit = df["Criticality"].map(coeff_crit).fillna(1.0)
     
-    # Le coût est proportionnel au taux de défaillance (plus on tombe en panne, plus on paie)
+    # Coût proportionnel à la durée de réparation et à la criticité
     df["Cout_MAD"] = (
-        (df["Lambda"] * 5_000_000) + (df["RatedPower_kW"] * 150) * impact_crit
-    ).round(-2).astype(int)
+        (df["MTTR_h"] * 1200) + (df
 
     # Catégorie de santé (pour affichage)
     df["Sante_Cat"] = np.select(
