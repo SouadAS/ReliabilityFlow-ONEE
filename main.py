@@ -922,7 +922,7 @@ st.markdown(
         display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.5rem;
     ">
         <span style="color:#2e5180; font-size:.78rem;">⚡ Smart Maintenance × ONEE — Maintenance Prédictive IA</span>
-        <span style="color:#2e5180; font-size:.78rem;">Filière Maintenance Industrielle | Souad Assad | 2024-2025</span>
+        <span style="color:#2e5180; font-size:.78rem;">Filière Maintenance Industrielle | Encadré par M.El Harraki | 2024-2025</span>
     </div>
     """,
     unsafe_allow_html=True,
