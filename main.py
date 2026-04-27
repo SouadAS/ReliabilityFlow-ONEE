@@ -178,12 +178,12 @@ st.markdown(
 # 5. ONGLETS PRINCIPAUX
 # ──────────────────────────────────────────────────────────────────────────────
 onglets = st.tabs([
-    "🏠  ACCUEIL",
-    "📊  DASHBOARD KPI",
-    "📋  PARC ÉQUIPEMENTS",
-    "🚨  ALERTES IA",
-    "🔮  PRÉDICTION PANNES",
-    "📅  PLAN MAINTENANCE",
+    "ACCUEIL",
+    "DASHBOARD KPI",
+    "PARC ÉQUIPEMENTS",
+    "ALERTES IA",
+    "PRÉDICTION PANNES",
+    "PLAN MAINTENANCE",
 ])
 
 
