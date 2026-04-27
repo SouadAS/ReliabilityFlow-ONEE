@@ -89,36 +89,43 @@ def charger_donnees():
 
     # --- CALCULS KPI RÉALISTES ---
 
-    # 1. MTBF (Heures) : Une pompe industrielle tourne entre 2000h et 8000h sans panne majeure.
-    # On lie le MTBF au Health Score (hs) de façon non-linéaire.
-    # Un score de 100 donne ~7000h, un score de 20 donne ~400h.
-    df["MTBF_h"] = (500 + (hs**2.2 / 20) + (100 - df["AgeYears"]) * 10).round(0)
+    # --- LOGIQUE DE FIABILITÉ (COURS ACADÉMIQUE) ---
 
-    # 2. MTTR (Heures) : Temps de réparation moyen (Diagnostic + Intervention).
-    # Basé sur la complexité (RatedPower) et le score de santé actuel.
-    # Une petite pompe (basse puissance) se répare en 2-4h, une grosse station en 24-48h.
-    base_repair = df["RatedPower_kW"] * 0.05  # Plus c'est puissant, plus c'est long
-    health_penalty = (100 - hs) * 0.2         # Plus c'est dégradé, plus c'est complexe
-    df["MTTR_h"] = (2 + base_repair + health_penalty + df["AgeYears"] * 0.1).round(1)
+    # 1. Calcul du Taux de Défaillance (Lambda)
+    # Plus le Health Score (hs) est bas, plus Lambda est élevé.
+    # Un Lambda typique pour une pompe est entre 0.0001 et 0.002 défaillances/heure.
+    # On utilise une échelle inversée : hs=100 -> lambda faible / hs=0 -> lambda fort
+    df["Lambda"] = (1 / (hs * 50 + 500)) + (df["AgeYears"] * 0.00005)
 
-    # 3. Disponibilité (%) : Ratio standard industriel
-    # On s'attend à des valeurs entre 85% et 99.9%
+    # 2. MTBF (Mean Time Between Failures)
+    # Formule du cours : MTBF = 1 / Lambda
+    df["MTBF_h"] = (1 / df["Lambda"]).round(0)
+
+    # 3. MTTR (Mean Time To Repair)
+    # Dans le cours, le MTTR est souvent noté 1/mu (taux de réparation).
+    # On le pondère ici par la complexité (Puissance) et l'âge.
+    df["MTTR_h"] = (4 + (df["RatedPower_kW"] * 0.02) + (df["AgeYears"] * 0.1)).round(1)
+
+    # 4. Disponibilité (A)
+    # Formule du cours : A = MTBF / (MTBF + MTTR)
     df["Disponibilite_pct"] = (
         df["MTBF_h"] / (df["MTBF_h"] + df["MTTR_h"]) * 100
     ).round(2)
 
-    # 4. Coût de Maintenance (MAD) : Réalité marocaine (ONEE)
-    # On sépare le coût fixe (entretien) et le coût variable (pièces/urgence)
+    # 5. Fiabilité R(t) à t = 720h (1 mois de fonctionnement continu)
+    # Formule du cours : R(t) = exp(-lambda * t)
+    t = 720 
+    df["Fiabilite_R_t"] = (np.exp(-df["Lambda"] * t) * 100).round(1)
+
+    # --- COÛTS DE MAINTENANCE ---
+    # Basé sur le coût de défaillance (LCC - Life Cycle Costing)
     coeff_crit = {"Very High": 2.5, "High": 1.8, "Medium": 1.2, "Low": 0.8}
-    
-    cout_fixe = 5000  # Déplacement et main d'oeuvre de base
-    cout_pieces = df["RatedPower_kW"] * 120  # Proportionnel à la taille de l'équipement
-    cout_urgence = (100 - hs) * 450         # Plus l'état est critique, plus c'est cher
     impact_crit = df["Criticality"].map(coeff_crit).fillna(1.0)
     
+    # Le coût est proportionnel au taux de défaillance (plus on tombe en panne, plus on paie)
     df["Cout_MAD"] = (
-        (cout_fixe + cout_pieces + cout_urgence) * impact_crit
-    ).round(-2).astype(int) # Arrondi à la centaine pour faire plus "réel"
+        (df["Lambda"] * 5_000_000) + (df["RatedPower_kW"] * 150) * impact_crit
+    ).round(-2).astype(int)
 
     # Catégorie de santé (pour affichage)
     df["Sante_Cat"] = np.select(
