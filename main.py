@@ -89,11 +89,33 @@ def charger_donnees():
 
     # --- CALCULS KPI RÉALISTES ---
 
-    # 1. MTBF (Heures) : Une pompe industrielle tourne entre 2000h et 8000h sans panne majeure.
-    # On lie le MTBF au Health Score (hs) de façon non-linéaire.
-    # Un score de 100 donne ~7000h, un score de 20 donne ~400h.
-    df["MTBF_h"] = (500 + (hs**2.2 / 20) + (100 - df["AgeYears"]) * 10).round(0)
+   import pandas as pd
+import numpy as np
 
+def calculer_kpi_frequence(df_assets, df_events):
+    # 1. Calcul du nombre de jours exacts de la période (DAX: NbJours)
+    date_debut = df_events['EventDate'].min()
+    date_fin = df_events['EventDate'].max()
+    nb_jours = (date_fin - date_debut).days + 1
+    
+    # 2. Temps de fonctionnement théorique (DAX: HeuresTheoriques)
+    nb_equipements = df_assets['AssetID'].nunique()
+    heures_theoriques = nb_jours * 24 * nb_equipements
+    
+    # 3. Déduction des arrêts pour le temps réel (DAX: TempsFonctionnement)
+    temps_arret_total = df_events['DowntimeHours'].sum()
+    temps_fonctionnement = heures_theoriques - temps_arret_total
+    
+    # 4. Nombre de pannes (DAX: NbPannes)
+    nb_pannes = df_events['EventID'].nunique()
+    
+    # 5. Calcul final du MTBF (DAX: DIVIDE)
+    mtbf = temps_fonctionnement / nb_pannes if nb_pannes > 0 else heures_theoriques
+    
+    # --- Pour le MTTR (Mean Time To Repair) ---
+    mttr = temps_arret_total / nb_pannes if nb_pannes > 0 else 0
+    
+    return round(mtbf, 1), round(mttr, 1)
     # 2. MTTR (Heures) : Temps de réparation moyen (Diagnostic + Intervention).
     # Basé sur la complexité (RatedPower) et le score de santé actuel.
     # Une petite pompe (basse puissance) se répare en 2-4h, une grosse station en 24-48h.
