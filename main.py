@@ -87,42 +87,43 @@ def charger_donnees():
 
     hs = df["BaselineHealthScore"]   # score réel entre 35 et 98
 
-   # --- CALCULS KPI RÉALISTES ---
-
-  # 1. Calcul des jours de la période
+   # -# --- 1. CALCULS GLOBAUX (LOGIQUE DAX POWER BI) ---
+# Tiré de ta logique DAX : NbJours, HeuresThéoriques, TempsFonctionnement
 date_debut = events["EventDate"].min()
 date_fin = events["EventDate"].max()
 nb_jours = (date_fin - date_debut).days + 1
-
-# 2. Temps théorique (Nb jours * 24h * Nb équipements)
 nb_equipements = assets["AssetID"].nunique()
+
 heures_theoriques = nb_jours * 24 * nb_equipements
-
-# 3. Temps de fonctionnement réel
-temps_arret = events["DowntimeHours"].sum()
-temps_fonctionnement = heures_theoriques - temps_arret
-
-# 4. Nombre de pannes
+temps_arret_total = events["DowntimeHours"].sum()
+temps_fonctionnement = heures_theoriques - temps_arret_total
 nb_pannes = events["EventID"].nunique()
 
-# 5. Calculs finaux MTBF / MTTR globaux
+# Calcul final MTBF & MTTR Globaux
 mtbf_global = temps_fonctionnement / nb_pannes if nb_pannes > 0 else heures_theoriques
-mttr_global = events["RepairTimeHours"].mean() # Comme sur ta capture 87b3d2
+mttr_global = events["RepairTimeHours"].mean() # Moyenne directe comme sur ton screen
 dispo_globale = (mtbf_global / (mtbf_global + mttr_global)) * 100 if (mtbf_global + mttr_global) > 0 else 100
 
-    # 4. Coût de Maintenance (MAD) : Réalité marocaine (ONEE)
-    # On sépare le coût fixe (entretien) et le coût variable (pièces/urgence)
-    coeff_crit = {"Very High": 2.5, "High": 1.8, "Medium": 1.2, "Low": 0.8}
-    
-    cout_fixe = 5000  # Déplacement et main d'oeuvre de base
-    cout_pieces = df["RatedPower_kW"] * 120  # Proportionnel à la taille de l'équipement
-    cout_urgence = (100 - hs) * 450         # Plus l'état est critique, plus c'est cher
-    impact_crit = df["Criticality"].map(coeff_crit).fillna(1.0)
-    
-    df["Cout_MAD"] = (
-        (cout_fixe + cout_pieces + cout_urgence) * impact_crit
-    ).round(-2).astype(int) # Arrondi à la centaine pour faire plus "réel"
-    # Catégorie de santé (pour affichage)
+# --- 2. CALCULS PAR ÉQUIPEMENT (POUR LE TABLEAU) ---
+# Agrégation par AssetID
+equipment_kpi = events.groupby("AssetID").agg(
+    TotalCost_MAD=("TotalCost_MAD", "sum"),
+    MTTR_h=("RepairTimeHours", "mean"),
+    EventCount=("EventID", "count"),
+    Downtime_Sum=("DowntimeHours", "sum")
+).reset_index()
+
+# Calcul de la fiabilité par équipement (Baseline)
+heures_theo_indiv = nb_jours * 24
+equipment_kpi["MTBF_h"] = (heures_theo_indiv - equipment_kpi["Downtime_Sum"]) / equipment_kpi["EventCount"]
+equipment_kpi["Dispo_pct"] = (equipment_kpi["MTBF_h"] / (equipment_kpi["MTBF_h"] + equipment_kpi["MTTR_h"])) * 100
+
+# --- 3. SÉCURISATION DES TYPES (POUR ÉVITER LE TYPEERROR) ---
+# Évite le crash sur les comparaisons < 45
+df["BaselineHealthScore"] = pd.to_numeric(df["BaselineHealthScore"], errors='coerce').fillna(0)
+
+# Arrondis pour un affichage propre
+equipment_kpi = equipment_kpi.round({"MTTR_h": 1, "MTBF_h": 0, "Dispo_pct": 2})
     df["Sante_Cat"] = np.select(
         [hs < 45, (hs >= 45) & (hs < 65), hs >= 65],
         ["Critique", "Dégradé", "Bon"],
