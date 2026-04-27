@@ -87,17 +87,13 @@ def charger_donnees():
 
     hs = df["BaselineHealthScore"]   # score réel entre 35 et 98
 
-    # --- CALCULS KPI RÉALISTES ---
+   # --- CALCULS KPI RÉALISTES ---
 
-def calculer_kpi_frequence(df_assets, df_events):
-    # Conversion forcée en numérique pour éviter le TypeError
-df["BaselineHealthScore"] = pd.to_numeric(df["BaselineHealthScore"], errors='coerce').fillna(0)
+    # 1. MTBF (Heures) : Une pompe industrielle tourne entre 2000h et 8000h sans panne majeure.
+    # On lie le MTBF au Health Score (hs) de façon non-linéaire.
+    # Un score de 100 donne ~7000h, un score de 20 donne ~400h.
+    df["MTBF_h"] = (500 + (hs**2.2 / 20) + (100 - df["AgeYears"]) * 10).round(0)
 
-# Calcul sécurisé des compteurs
-nb_crit = int((df["BaselineHealthScore"] < 45).sum())
-nb_deg  = int(((df["BaselineHealthScore"] >= 45) & (df["BaselineHealthScore"] <= 70)).sum())
-nb_bon  = int((df["BaselineHealthScore"] > 70).sum())
-    return round(mtbf, 1), round(mttr, 1)
     # 2. MTTR (Heures) : Temps de réparation moyen (Diagnostic + Intervention).
     # Basé sur la complexité (RatedPower) et le score de santé actuel.
     # Une petite pompe (basse puissance) se répare en 2-4h, une grosse station en 24-48h.
@@ -123,7 +119,6 @@ nb_bon  = int((df["BaselineHealthScore"] > 70).sum())
     df["Cout_MAD"] = (
         (cout_fixe + cout_pieces + cout_urgence) * impact_crit
     ).round(-2).astype(int) # Arrondi à la centaine pour faire plus "réel"
-
     # Catégorie de santé (pour affichage)
     df["Sante_Cat"] = np.select(
         [hs < 45, (hs >= 45) & (hs < 65), hs >= 65],
