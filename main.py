@@ -89,36 +89,30 @@ def charger_donnees():
 
     # --- CALCULS KPI RÉALISTES ---
 
-    # --- LOGIQUE DE FIABILITÉ CALIBRÉE SUR POWER BI ---
+   # --- CALCULS DE FIABILITÉ CALIBRÉS (POWER BI) ---
 
-    # 1. Calcul du Taux de Défaillance (Lambda)
-    # Pour obtenir un MTBF moyen de ~500h, il faut un Lambda moyen de 1/500 = 0.002
-    # On ajuste la formule pour que Lambda varie autour de cette valeur selon le Health Score (hs)
-    df["Lambda"] = (1 / (hs * 4 + 100)) + (df["AgeYears"] * 0.00002)
+# Lambda calculé pour viser un MTBF moyen de 500h
+# Formule : 1 / (ScoreSanté * 4 + 100)
+df["Lambda"] = 1 / (df["Score Santé"] * 4 + 100)
 
-    # 2. MTBF (Mean Time Between Failures)
-    # Résultat attendu : ~500h (Inverse de Lambda)
-    df["MTBF_h"] = (1 / df["Lambda"]).round(0)
+# MTBF (Mean Time Between Failures) -> Résultat visé : ~500h
+df["MTBF_h"] = (1 / df["Lambda"]).round(0)
 
-    # 3. MTTR (Mean Time To Repair)
-    # Résultat attendu : ~9.35h
-    # On définit une base de 6h (logistique) + une part variable selon la puissance et l'état
-    df["MTTR_h"] = (6.0 + (df["RatedPower_kW"] * 0.015) + (100 - hs) * 0.04).round(2)
+# MTTR (Mean Time To Repair) -> Résultat visé : ~9.35h
+# Base fixe de 7.5h + part variable selon l'état de santé
+df["MTTR_h"] = (7.5 + (100 - df["Score Santé"]) * 0.05).round(2)
 
-    # 4. Disponibilité (%)
-    # A = MTBF / (MTBF + MTTR) -> (500 / 509.35) ≈ 98.1%
-    df["Disponibilite_pct"] = (
-        df["MTBF_h"] / (df["MTBF_h"] + df["MTTR_h"]) * 100
-    ).round(2)
+# Disponibilité (%) -> Formule académique : MTBF / (MTBF + MTTR)
+df["Disponibilite_pct"] = (
+    df["MTBF_h"] / (df["MTBF_h"] + df["MTTR_h"]) * 100
+).round(2)
 
-    # 5. Coût de Maintenance (MAD)
-    # Calibré sur les interventions pour un MTTR de 9h
-    coeff_crit = {"Very High": 2.5, "High": 1.8, "Medium": 1.2, "Low": 0.8}
-    impact_crit = df["Criticality"].map(coeff_crit).fillna(1.0)
-    
-    # Coût proportionnel à la durée de réparation et à la criticité
-    df["Cout_MAD"] = (
-        (df["MTTR_h"] * 1200) + (df
+# Coût de Maintenance (MAD) - Correction de la syntaxe ligne 121
+coeff_crit = {"Très Haute": 2.5, "Haute": 1.8, "Moyenne": 1.2, "Faible": 0.8}
+df["Cout_MAD"] = (
+    (df["MTTR_h"] * 1200) + 
+    (df["RatedPower_kW"] * 50) * df["Criticité"].map(coeff_crit).fillna(1.0)
+).round(-2).astype(int)
 
     # Catégorie de santé (pour affichage)
     df["Sante_Cat"] = np.select(
