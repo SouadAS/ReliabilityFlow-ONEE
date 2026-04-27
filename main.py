@@ -60,31 +60,7 @@ CSS = """
       color: #ffffff !important; box-shadow: 0 4px 14px rgba(0,74,153,.45) !important;
   }
 
-  /* --- Métriques ----------------------------------------------------------- */
-  [data-testid="metric-container"] {
-      background: linear-gradient(135deg,#0b1e3d,#081428) !important;
-      border: 1px solid #1a3f7a !important; border-radius: 12px !important; padding: .9rem !important;
-  }
-  [data-testid="stMetricValue"] { color: #f9b233 !important; font-weight: 800 !important; }
-  [data-testid="stMetricLabel"] { color: #7ba3d4 !important; }
-
-  /* --- Scrollbar ----------------------------------------------------------- */
-  ::-webkit-scrollbar { width: 5px; }
-  ::-webkit-scrollbar-track { background: #081428; }
-  ::-webkit-scrollbar-thumb { background: #004a99; border-radius: 3px; }
-
-  /* --- Boutons ------------------------------------------------------------- */
-  .stButton > button {
-      background: linear-gradient(135deg,#004a99,#f9b233) !important;
-      border: none !important; border-radius: 8px !important;
-      color: #040e1f !important; font-weight: 700 !important;
-  }
-
-  /* --- Expander ------------------------------------------------------------ */
-  [data-testid="stExpander"] {
-      background: #0b1e3d !important; border: 1px solid #1a3f7a !important;
-      border-radius: 10px !important;
-  }
+  
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
