@@ -88,36 +88,37 @@ def charger_donnees():
     hs = df["BaselineHealthScore"]   # score réel entre 35 et 98
 
     # --- CALCULS KPI RÉALISTES ---
-# --- CALCULS DE FIABILITÉ CALIBRÉS (POWER BI) ---
-    # Lambda pour viser un MTBF moyen de 500h (1/500 = 0.002)
-    df["Lambda"] = 1 / (df["Score Santé"] * 4 + 100)
 
-    # MTBF (Mean Time Between Failures) -> Cible : ~500h
-    df["MTBF_h"] = (1 / df["Lambda"]).round(0)
+    # 1. MTBF (Heures) : Une pompe industrielle tourne entre 2000h et 8000h sans panne majeure.
+    # On lie le MTBF au Health Score (hs) de façon non-linéaire.
+    # Un score de 100 donne ~7000h, un score de 20 donne ~400h.
+    df["MTBF_h"] = (500 + (hs**2.2 / 20) + (100 - df["AgeYears"]) * 10).round(0)
 
-    # MTTR (Mean Time To Repair) -> Cible : ~9.35h
-    df["MTTR_h"] = (7.5 + (100 - df["Score Santé"]) * 0.05).round(2)
+    # 2. MTTR (Heures) : Temps de réparation moyen (Diagnostic + Intervention).
+    # Basé sur la complexité (RatedPower) et le score de santé actuel.
+    # Une petite pompe (basse puissance) se répare en 2-4h, une grosse station en 24-48h.
+    base_repair = df["RatedPower_kW"] * 0.05  # Plus c'est puissant, plus c'est long
+    health_penalty = (100 - hs) * 0.2         # Plus c'est dégradé, plus c'est complexe
+    df["MTTR_h"] = (2 + base_repair + health_penalty + df["AgeYears"] * 0.1).round(1)
 
-    # Disponibilité (%) -> Formule : MTBF / (MTBF + MTTR)
+    # 3. Disponibilité (%) : Ratio standard industriel
+    # On s'attend à des valeurs entre 85% et 99.9%
     df["Disponibilite_pct"] = (
         df["MTBF_h"] / (df["MTBF_h"] + df["MTTR_h"]) * 100
     ).round(2)
 
-    # --- CATÉGORISATION DE SANTÉ (np.select corrigé) ---
-    conditions = [
-        (df["Score Santé"] > 70),
-        (df["Score Santé"] >= 45) & (df["Score Santé"] <= 70),
-        (df["Score Santé"] < 45)
-    ]
-    choix = ["Bon", "Dégradé", "Critique"]
-    df["Sante_Cat"] = np.select(conditions, choix, default="Inconnu")
-
-    # --- CALCUL DES COÛTS ---
-    coeff_crit = {"Très Haute": 2.5, "Haute": 1.8, "Moyenne": 1.2, "Faible": 0.8}
+    # 4. Coût de Maintenance (MAD) : Réalité marocaine (ONEE)
+    # On sépare le coût fixe (entretien) et le coût variable (pièces/urgence)
+    coeff_crit = {"Very High": 2.5, "High": 1.8, "Medium": 1.2, "Low": 0.8}
+    
+    cout_fixe = 5000  # Déplacement et main d'oeuvre de base
+    cout_pieces = df["RatedPower_kW"] * 120  # Proportionnel à la taille de l'équipement
+    cout_urgence = (100 - hs) * 450         # Plus l'état est critique, plus c'est cher
+    impact_crit = df["Criticality"].map(coeff_crit).fillna(1.0)
+    
     df["Cout_MAD"] = (
-        (df["MTTR_h"] * 1200) + 
-        (df["RatedPower_kW"] * 50) * df["Criticité"].map(coeff_crit).fillna(1.0)
-    ).round(-2).astype(int)
+        (cout_fixe + cout_pieces + cout_urgence) * impact_crit
+    ).round(-2).astype(int) # Arrondi à la centaine pour faire plus "réel"
 
     # Catégorie de santé (pour affichage)
     df["Sante_Cat"] = np.select(
