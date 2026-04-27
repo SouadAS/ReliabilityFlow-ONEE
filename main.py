@@ -139,16 +139,16 @@ df["RisquePanne"] = (
 ).clip(0, 100).round(1)
 
     # Statut maintenance dynamique basé sur le risque
-    df["Statut_Maint"] = np.where(
-        df["RisquePanne"] > 65, "Urgent",
-        np.where(df["RisquePanne"] > 40, "Planifié", "OK"),
-    )
+df["Statut_Maint"] = np.where(
+    df["RisquePanne"] > 65, "Urgent",
+    np.where(df["RisquePanne"] > 40, "Planifié", "OK"),
+)
 
     # Traduction criticité en français
-    trad = {"Very High": "Très Haute", "High": "Haute", "Medium": "Moyenne", "Low": "Faible"}
-    df["Criticite_FR"] = df["Criticality"].map(trad).fillna(df["Criticality"])
+trad = {"Very High": "Très Haute", "High": "Haute", "Medium": "Moyenne", "Low": "Faible"}
+df["Criticite_FR"] = df["Criticality"].map(trad).fillna(df["Criticality"])
 
-    return df
+return df
 
 
 df = charger_donnees()
