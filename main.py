@@ -89,23 +89,26 @@ def charger_donnees():
 
    # --- CALCULS KPI RÉALISTES ---
 
-    # 1. MTBF (Heures) : Une pompe industrielle tourne entre 2000h et 8000h sans panne majeure.
-    # On lie le MTBF au Health Score (hs) de façon non-linéaire.
-    # Un score de 100 donne ~7000h, un score de 20 donne ~400h.
-    df["MTBF_h"] = (500 + (hs**2.2 / 20) + (100 - df["AgeYears"]) * 10).round(0)
+  # 1. Calcul des jours de la période
+date_debut = events["EventDate"].min()
+date_fin = events["EventDate"].max()
+nb_jours = (date_fin - date_debut).days + 1
 
-    # 2. MTTR (Heures) : Temps de réparation moyen (Diagnostic + Intervention).
-    # Basé sur la complexité (RatedPower) et le score de santé actuel.
-    # Une petite pompe (basse puissance) se répare en 2-4h, une grosse station en 24-48h.
-    base_repair = df["RatedPower_kW"] * 0.05  # Plus c'est puissant, plus c'est long
-    health_penalty = (100 - hs) * 0.2         # Plus c'est dégradé, plus c'est complexe
-    df["MTTR_h"] = (2 + base_repair + health_penalty + df["AgeYears"] * 0.1).round(1)
+# 2. Temps théorique (Nb jours * 24h * Nb équipements)
+nb_equipements = assets["AssetID"].nunique()
+heures_theoriques = nb_jours * 24 * nb_equipements
 
-    # 3. Disponibilité (%) : Ratio standard industriel
-    # On s'attend à des valeurs entre 85% et 99.9%
-    df["Disponibilite_pct"] = (
-        df["MTBF_h"] / (df["MTBF_h"] + df["MTTR_h"]) * 100
-    ).round(2)
+# 3. Temps de fonctionnement réel
+temps_arret = events["DowntimeHours"].sum()
+temps_fonctionnement = heures_theoriques - temps_arret
+
+# 4. Nombre de pannes
+nb_pannes = events["EventID"].nunique()
+
+# 5. Calculs finaux MTBF / MTTR globaux
+mtbf_global = temps_fonctionnement / nb_pannes if nb_pannes > 0 else heures_theoriques
+mttr_global = events["RepairTimeHours"].mean() # Comme sur ta capture 87b3d2
+dispo_globale = (mtbf_global / (mtbf_global + mttr_global)) * 100 if (mtbf_global + mttr_global) > 0 else 100
 
     # 4. Coût de Maintenance (MAD) : Réalité marocaine (ONEE)
     # On sépare le coût fixe (entretien) et le coût variable (pièces/urgence)
