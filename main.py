@@ -124,11 +124,11 @@ df["BaselineHealthScore"] = pd.to_numeric(df["BaselineHealthScore"], errors='coe
 
 # Arrondis pour un affichage propre
 equipment_kpi = equipment_kpi.round({"MTTR_h": 1, "MTBF_h": 0, "Dispo_pct": 2})
-    df["Sante_Cat"] = np.select(
-        [hs < 45, (hs >= 45) & (hs < 65), hs >= 65],
-        ["Critique", "Dégradé", "Bon"],
-        default="Inconnu",
-    )
+df["Sante_Cat"] = np.select(
+    [hs < 45, (hs >= 45) & (hs < 65), hs >= 65],
+    ["Critique", "Dégradé", "Bon"],
+    default="Inconnu",
+)
 
     # Score de risque de panne (0–100) — modèle IA multi-critères
     df["RisquePanne"] = (
