@@ -789,11 +789,12 @@ with onglets[5]:
         rp   = eq["RisquePanne"]
         pc   = "#ef4444" if rp > 70 else ("#f9b233" if rp > 50 else "#22c55e")
 
-        with st.expander(
-            f"⚙️ {aid} — {eq['AssetType']} | {eq['Site']} "
-            f"| Risque {rp:.0f}% | {etat['statut']}",
-            expanded=(rp > 70),
-        ):
+        # Correction de la ligne with st.expander
+    with st.expander(
+        f"🛠️ {aid} • {eq['AssetType']} • {eq['Site']} "
+        f"| Risque : {rp:.0f}% | Statut : {etat['statut']}",
+        expanded=(rp > 70),
+    ):
             c1, c2, c3, c4 = st.columns([2, 2, 2, 1])
 
             with c1:
