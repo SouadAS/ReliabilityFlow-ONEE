@@ -794,8 +794,7 @@ with onglets[5]:
             f"⚙️ {aid} — {eq['AssetType']} | {eq['Site']} "
             f"| Risque {rp:.0f}% | {etat['statut']}",
             expanded=(rp > 70),
-       ):
-            c1, c2, c3, c4 = st.columns([2, 2, 2, 1])
+       ): c1, c2, c3, c4 = st.columns([2, 2, 2, 1])
 
             with c1:
                 statut = st.selectbox(
