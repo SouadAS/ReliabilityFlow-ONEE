@@ -1,6 +1,5 @@
 # ==============================================================================
 # SMART MAINTENANCE ONEE — Plateforme de Maintenance Prédictive par IA
-# Auteure  : Encadré par: M.El Harraki — Filière Maintenance Industrielle
 # Framework: Python 3 / Streamlit
 # Données  : donnees.xlsx  (180 équipements ONEE)
 # Colonnes réelles : AssetID, Context, Site, Line, AssetType, Criticality,
